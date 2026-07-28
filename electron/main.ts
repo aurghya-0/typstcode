@@ -47,7 +47,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false
     },
-    icon: path.join(__dirname, '../public/favicon.svg')
+    icon: path.join(__dirname, '../public/favicon.png')
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
