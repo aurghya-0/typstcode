@@ -60,6 +60,7 @@ nsis:
   runAfterFinish: true
 
 linux:
+  maintainer: "Aurghyadip Kundu <aurghyadipkundu.off@gmail.com>"
   target:
     - target: AppImage
       arch:
