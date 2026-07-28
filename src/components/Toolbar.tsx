@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Play,
   FileCode,
+  FilePlus,
   FolderOpen,
   FolderPlus,
   Save,
@@ -10,7 +11,6 @@ import {
   Image,
   RefreshCw,
   Layout,
-  BookOpen,
   Sparkles,
   Zap
 } from 'lucide-react';
@@ -21,12 +21,12 @@ interface ToolbarProps {
   setAutoCompile: (val: boolean) => void;
   onCompile: () => void;
   isCompiling: boolean;
+  onNewFile?: () => void;
   onOpen: () => void;
   onOpenFolder?: () => void;
   onSave: () => void;
   onExportPdf: () => void;
   onExportPng: () => void;
-  onOpenTemplates: () => void;
   viewMode: 'split' | 'editor' | 'preview';
   setViewMode: (mode: 'split' | 'editor' | 'preview') => void;
   compilationTimeMs: number | null;
@@ -38,12 +38,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   setAutoCompile,
   onCompile,
   isCompiling,
+  onNewFile,
   onOpen,
   onOpenFolder,
   onSave,
   onExportPdf,
   onExportPng,
-  onOpenTemplates,
   viewMode,
   setViewMode,
   compilationTimeMs
@@ -69,6 +69,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Center: File Actions & Compilation Controls */}
       <div className="flex items-center space-x-2">
+        {onNewFile && (
+          <button
+            onClick={onNewFile}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            title="New File (Ctrl+N)"
+          >
+            <FilePlus className="w-3.5 h-3.5 text-blue-400" />
+            <span>New File</span>
+          </button>
+        )}
+
         <button
           onClick={onOpen}
           className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
@@ -96,17 +107,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         >
           <Save className="w-3.5 h-3.5 text-emerald-400" />
           <span>Save</span>
-        </button>
-
-        <div className="h-4 w-px bg-slate-800 mx-1" />
-
-        {/* Templates */}
-        <button
-          onClick={onOpenTemplates}
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-800/50 transition-all"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Templates</span>
         </button>
 
         <div className="h-4 w-px bg-slate-800 mx-1" />

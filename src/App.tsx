@@ -5,8 +5,7 @@ import { Preview } from './components/Preview';
 import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
 import { ErrorPanel } from './components/ErrorPanel';
-import { TemplatesModal } from './components/TemplatesModal';
-import { TEMPLATES, TypstTemplate } from './utils/templates';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { compileTypstWasm } from './utils/wasmTypst';
 
 // Type definitions for window.electronAPI
@@ -33,7 +32,8 @@ declare global {
 }
 
 export const App: React.FC = () => {
-  const [code, setCode] = useState<string>(TEMPLATES[0].code);
+  const [showWelcome, setShowWelcome] = useState<boolean>(true);
+  const [code, setCode] = useState<string>('');
   const [filePath, setFilePath] = useState<string | null>(null);
   const [autoCompile, setAutoCompile] = useState<boolean>(true);
   const [isCompiling, setIsCompiling] = useState<boolean>(false);
@@ -44,7 +44,6 @@ export const App: React.FC = () => {
   
   const [viewMode, setViewMode] = useState<'split' | 'editor' | 'preview'>('split');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState<boolean>(false);
   const [isErrorPanelOpen, setIsErrorPanelOpen] = useState<boolean>(true);
   const [cursorPos, setCursorPos] = useState<{ line: number; column: number }>({ line: 1, column: 1 });
   const [typstVersion, setTypstVersion] = useState<string>('Typst v0.15.0');
@@ -188,6 +187,14 @@ export const App: React.FC = () => {
     };
   }, [code, filePath, autoCompile, handleCompile]);
 
+  // New File Handler
+  const handleNewFile = useCallback(() => {
+    setCode('');
+    setFilePath(null);
+    setShowWelcome(false);
+    handleCompile('', null);
+  }, [handleCompile]);
+
   // File Operations
   const handleOpenFileByPath = useCallback(async (selectedPath: string) => {
     if (window.electronAPI?.readFileByPath) {
@@ -196,6 +203,7 @@ export const App: React.FC = () => {
         if (res.success) {
           setFilePath(res.filePath);
           setCode(res.content);
+          setShowWelcome(false);
           handleCompile(res.content, res.filePath);
         } else {
           console.error('Failed to read file by path:', res.error);
@@ -215,6 +223,7 @@ export const App: React.FC = () => {
           if (content !== undefined) {
             setFilePath(selectedPath);
             setCode(content);
+            setShowWelcome(false);
             handleCompile(content, selectedPath);
           }
         };
@@ -230,6 +239,7 @@ export const App: React.FC = () => {
         if (res) {
           setFilePath(res.filePath);
           setCode(res.content);
+          setShowWelcome(false);
           handleCompile(res.content, res.filePath);
         }
       } catch (err) {
@@ -311,6 +321,7 @@ export const App: React.FC = () => {
       if (content !== undefined) {
         setFilePath(file.name);
         setCode(content);
+        setShowWelcome(false);
         handleCompile(content, file.name);
       }
     };
@@ -326,17 +337,20 @@ export const App: React.FC = () => {
     }
   };
 
-  // Global Keyboard Shortcuts (Ctrl+O, Ctrl+S)
+  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+O)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        handleNewFile();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         handleOpenFile();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleOpenFile]);
+  }, [handleNewFile, handleOpenFile]);
 
   const handleExportPdf = async () => {
     if (!window.electronAPI) return;
@@ -349,12 +363,6 @@ export const App: React.FC = () => {
   const handleExportPng = async () => {
     if (!window.electronAPI) return;
     await window.electronAPI.exportPng(code);
-  };
-
-  const handleSelectTemplate = (template: TypstTemplate) => {
-    setCode(template.code);
-    setFilePath(null);
-    handleCompile(template.code);
   };
 
   const handleInsertSnippet = (snippet: string) => {
@@ -372,14 +380,17 @@ export const App: React.FC = () => {
         fileName={filePath}
         autoCompile={autoCompile}
         setAutoCompile={setAutoCompile}
-        onCompile={() => handleCompile(code)}
+        onCompile={() => {
+          if (showWelcome) setShowWelcome(false);
+          handleCompile(code);
+        }}
         isCompiling={isCompiling}
+        onNewFile={handleNewFile}
         onOpen={handleOpenFile}
         onOpenFolder={handleOpenFolder}
         onSave={handleSaveFile}
         onExportPdf={handleExportPdf}
         onExportPng={handleExportPng}
-        onOpenTemplates={() => setIsTemplatesOpen(true)}
         viewMode={viewMode}
         setViewMode={setViewMode}
         compilationTimeMs={compilationTimeMs}
@@ -396,60 +407,70 @@ export const App: React.FC = () => {
           isLoadingFiles={isLoadingFiles}
           onLoadDirectory={loadDirectory}
           onOpenFileByPath={handleOpenFileByPath}
-          onInsertSnippet={handleInsertSnippet}
+          onInsertSnippet={(snippet) => {
+            if (showWelcome) setShowWelcome(false);
+            handleInsertSnippet(snippet);
+          }}
           onSelectHeading={handleJumpToLine}
-          onOpenTemplates={() => setIsTemplatesOpen(true)}
           onOpenFolder={handleOpenFolder}
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
         />
 
         {/* Center/Right Pane Workspace */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
-          <div className="flex-1 flex overflow-hidden relative">
-            {/* Editor Pane */}
-            {(viewMode === 'split' || viewMode === 'editor') && (
-              <div
-                className={`h-full flex flex-col ${
-                  viewMode === 'split' ? 'w-1/2' : 'w-full'
-                }`}
-              >
-                <Editor
-                  code={code}
-                  onChange={setCode}
-                  diagnostics={diagnostics}
-                  onCursorChange={(l, c) => setCursorPos({ line: l, column: c })}
-                  onSave={handleSaveFile}
-                  onCompile={() => handleCompile(code)}
-                />
-              </div>
-            )}
-
-            {/* Live Preview Pane */}
-            {(viewMode === 'split' || viewMode === 'preview') && (
-              <div
-                className={`h-full ${
-                  viewMode === 'split' ? 'w-1/2' : 'w-full'
-                }`}
-              >
-                <Preview
-                  pages={pages}
-                  isCompiling={isCompiling}
-                  error={rawError}
-                  compilationTimeMs={compilationTimeMs}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Diagnostic Panel for Errors */}
-          <ErrorPanel
-            diagnostics={diagnostics}
-            onSelectDiagnostic={(line) => handleJumpToLine(line)}
-            isOpen={isErrorPanelOpen}
-            setIsOpen={setIsErrorPanelOpen}
+        {showWelcome ? (
+          <WelcomeScreen
+            onNewFile={handleNewFile}
+            onOpenFile={handleOpenFile}
+            onOpenFolder={handleOpenFolder}
           />
-        </div>
+        ) : (
+          <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 flex overflow-hidden relative">
+              {/* Editor Pane */}
+              {(viewMode === 'split' || viewMode === 'editor') && (
+                <div
+                  className={`h-full flex flex-col ${
+                    viewMode === 'split' ? 'w-1/2' : 'w-full'
+                  }`}
+                >
+                  <Editor
+                    code={code}
+                    onChange={setCode}
+                    diagnostics={diagnostics}
+                    onCursorChange={(l, c) => setCursorPos({ line: l, column: c })}
+                    onSave={handleSaveFile}
+                    onCompile={() => handleCompile(code)}
+                  />
+                </div>
+              )}
+
+              {/* Live Preview Pane */}
+              {(viewMode === 'split' || viewMode === 'preview') && (
+                <div
+                  className={`h-full ${
+                    viewMode === 'split' ? 'w-1/2' : 'w-full'
+                  }`}
+                >
+                  <Preview
+                    pages={pages}
+                    isCompiling={isCompiling}
+                    error={rawError}
+                    compilationTimeMs={compilationTimeMs}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Diagnostic Panel for Errors */}
+            <ErrorPanel
+              diagnostics={diagnostics}
+              onSelectDiagnostic={(line) => handleJumpToLine(line)}
+              isOpen={isErrorPanelOpen}
+              setIsOpen={setIsErrorPanelOpen}
+            />
+          </div>
+        )}
       </div>
 
       {/* Status Bar */}
@@ -480,13 +501,6 @@ export const App: React.FC = () => {
         webkitdirectory=""
         directory=""
         className="hidden"
-      />
-
-      {/* Template Gallery Modal */}
-      <TemplatesModal
-        isOpen={isTemplatesOpen}
-        onClose={() => setIsTemplatesOpen(false)}
-        onSelectTemplate={handleSelectTemplate}
       />
     </div>
   );

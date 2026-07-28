@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Code2,
   ListTree,
-  BookOpen,
   Heading,
   Sigma,
   Table,
@@ -36,7 +35,6 @@ interface SidebarProps {
   onOpenFileByPath: (filePath: string) => void;
   onInsertSnippet: (snippet: string) => void;
   onSelectHeading: (lineNumber: number) => void;
-  onOpenTemplates: () => void;
   onOpenFolder: () => void;
   isCollapsed: boolean;
   setIsCollapsed: (val: boolean) => void;
@@ -52,7 +50,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenFileByPath,
   onInsertSnippet,
   onSelectHeading,
-  onOpenTemplates,
   onOpenFolder,
   isCollapsed,
   setIsCollapsed
@@ -400,17 +397,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </div>
         )}
-      </div>
-
-      {/* Bottom Template Quick Trigger */}
-      <div className="p-2 border-t border-slate-800/80 bg-slate-950/80">
-        <button
-          onClick={onOpenTemplates}
-          className="w-full flex items-center justify-center space-x-2 py-1.5 px-3 bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-800/60 rounded-lg text-xs font-medium text-indigo-300 transition-all shadow-sm"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Browse Templates</span>
-        </button>
       </div>
     </aside>
   );
