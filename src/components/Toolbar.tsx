@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Layout,
   Sparkles,
-  Zap
+  Zap,
+  BookOpen
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -24,6 +25,7 @@ interface ToolbarProps {
   onNewFile?: () => void;
   onOpen: () => void;
   onOpenFolder?: () => void;
+  onOpenTemplates?: () => void;
   onSave: () => void;
   onExportPdf: () => void;
   onExportPng: () => void;
@@ -41,6 +43,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onNewFile,
   onOpen,
   onOpenFolder,
+  onOpenTemplates,
   onSave,
   onExportPdf,
   onExportPng,
@@ -53,7 +56,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {/* Left: App Logo & File Title */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1 rounded-md shadow-md shadow-blue-500/20">
-          <Sparkles className="w-4 h-4 text-blue-200 animate-pulse" />
+          <img src="/favicon.png" alt="Logo" className="w-4 h-4 object-contain" />
           <span className="font-extrabold text-sm tracking-wide font-outfit">TYPSTCODE</span>
         </div>
 
@@ -77,6 +80,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             <FilePlus className="w-3.5 h-3.5 text-blue-400" />
             <span>New File</span>
+          </button>
+        )}
+
+        {onOpenTemplates && (
+          <button
+            onClick={onOpenTemplates}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-800/50 transition-all"
+            title="Browse Starter Templates"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Templates</span>
           </button>
         )}
 

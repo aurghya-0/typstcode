@@ -1,16 +1,18 @@
 import React from 'react';
-import { Sparkles, FilePlus, FolderOpen, FolderPlus } from 'lucide-react';
+import { Sparkles, FilePlus, FolderOpen, FolderPlus, BookOpen } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenFolder: () => void;
+  onOpenTemplates?: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onNewFile,
   onOpenFile,
   onOpenFolder,
+  onOpenTemplates,
 }) => {
   return (
     <div className="flex-1 h-full flex flex-col items-center justify-center p-8 bg-[#07090e] select-none text-slate-200 overflow-y-auto">
@@ -18,7 +20,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {/* Logo and Hero Header */}
         <div className="flex flex-col items-center space-y-3">
           <div className="p-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl shadow-xl shadow-blue-500/20 ring-1 ring-white/20">
-            <Sparkles className="w-10 h-10 text-white animate-pulse" />
+            <img src="/favicon.png" alt="TypstCode Icon" className="w-12 h-12 object-contain" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white font-outfit">
             TypstCode
@@ -29,7 +31,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </div>
 
         {/* Primary Action Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full">
           <button
             onClick={onNewFile}
             className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-900/80 hover:bg-blue-950/40 border border-slate-800 hover:border-blue-500/50 transition-all group shadow-lg shadow-black/40"
@@ -40,8 +42,23 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <span className="text-xs font-semibold text-slate-200 group-hover:text-blue-300">
               New File
             </span>
-            <span className="text-[10px] text-slate-500 mt-0.5">Start blank document</span>
+            <span className="text-[10px] text-slate-500 mt-0.5">Start blank</span>
           </button>
+
+          {onOpenTemplates && (
+            <button
+              onClick={onOpenTemplates}
+              className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-900/80 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/50 transition-all group shadow-lg shadow-black/40"
+            >
+              <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform mb-2">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-semibold text-slate-200 group-hover:text-indigo-300">
+                Templates
+              </span>
+              <span className="text-[10px] text-slate-500 mt-0.5">Starter gallery</span>
+            </button>
+          )}
 
           <button
             onClick={onOpenFile}
@@ -58,12 +75,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
           <button
             onClick={onOpenFolder}
-            className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-900/80 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/50 transition-all group shadow-lg shadow-black/40"
+            className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-900/80 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/50 transition-all group shadow-lg shadow-black/40"
           >
-            <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform mb-2">
+            <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform mb-2">
               <FolderPlus className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold text-slate-200 group-hover:text-indigo-300">
+            <span className="text-xs font-semibold text-slate-200 group-hover:text-purple-300">
               Open Folder
             </span>
             <span className="text-[10px] text-slate-500 mt-0.5">Open workspace</span>

@@ -6,6 +6,8 @@ import { Sidebar } from './components/Sidebar';
 import { StatusBar } from './components/StatusBar';
 import { ErrorPanel } from './components/ErrorPanel';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { TemplatesModal } from './components/TemplatesModal';
+import { TypstTemplate } from './utils/templates';
 import { compileTypstWasm } from './utils/wasmTypst';
 
 // Type definitions for window.electronAPI
@@ -33,6 +35,7 @@ declare global {
 
 export const App: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState<boolean>(false);
   const [code, setCode] = useState<string>('');
   const [filePath, setFilePath] = useState<string | null>(null);
   const [autoCompile, setAutoCompile] = useState<boolean>(true);
@@ -193,6 +196,13 @@ export const App: React.FC = () => {
     setFilePath(null);
     setShowWelcome(false);
     handleCompile('', null);
+  }, [handleCompile]);
+
+  const handleSelectTemplate = useCallback((template: TypstTemplate) => {
+    setCode(template.code);
+    setFilePath(null);
+    setShowWelcome(false);
+    handleCompile(template.code, null);
   }, [handleCompile]);
 
   // File Operations
@@ -388,6 +398,7 @@ export const App: React.FC = () => {
         onNewFile={handleNewFile}
         onOpen={handleOpenFile}
         onOpenFolder={handleOpenFolder}
+        onOpenTemplates={() => setIsTemplatesModalOpen(true)}
         onSave={handleSaveFile}
         onExportPdf={handleExportPdf}
         onExportPng={handleExportPng}
@@ -423,6 +434,7 @@ export const App: React.FC = () => {
             onNewFile={handleNewFile}
             onOpenFile={handleOpenFile}
             onOpenFolder={handleOpenFolder}
+            onOpenTemplates={() => setIsTemplatesModalOpen(true)}
           />
         ) : (
           <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -481,6 +493,13 @@ export const App: React.FC = () => {
         hasError={diagnostics.length > 0}
         compilationTimeMs={compilationTimeMs}
         typstVersion={typstVersion}
+      />
+
+      {/* Templates Modal Gallery */}
+      <TemplatesModal
+        isOpen={isTemplatesModalOpen}
+        onClose={() => setIsTemplatesModalOpen(false)}
+        onSelectTemplate={handleSelectTemplate}
       />
 
       {/* Hidden File Input for Browser Fallback */}

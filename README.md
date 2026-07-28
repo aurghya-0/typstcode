@@ -8,6 +8,18 @@
 
 ---
 
+## 📸 Screenshots
+
+| Editor & Live Preview | Welcome Screen |
+| :---: | :---: |
+| ![Split View](screenshots/editor-preview-split.png) | ![Welcome Screen](screenshots/welcome-screen.png) |
+
+| Starter Template Gallery | Full Live Preview |
+| :---: | :---: |
+| ![Template Modal](screenshots/template-modal.png) | ![Live Preview](screenshots/live-preview.png) |
+
+---
+
 ## ✨ Features
 
 - **VS Code-Grade Monaco Editor**: Built-in syntax highlighting for Typst (`typst-dark` theme), line numbers, minimap, auto-closing brackets, and custom snippets.

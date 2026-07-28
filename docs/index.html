@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TypstCode - Modern Typst Desktop Editor with Live Preview</title>
+  <meta name="description" content="A fast, modern desktop editor for Typst built with Electron, React, Vite, and Monaco Editor. Sub-millisecond live preview, template gallery, and multi-format exports." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+              950: '#172554',
+            },
+            dark: {
+              bg: '#07090e',
+              card: '#0f172a',
+              border: '#1e293b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background-color: #07090e;
+      color: #f1f5f9;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-effect {
+      position: absolute;
+      border-radius: 9999px;
+      filter: blur(120px);
+      pointer-events: none;
+      opacity: 0.15;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #60a5fa 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="font-sans antialiased bg-[#07090e] text-slate-100 selection:bg-blue-600 selection:text-white">
+
+  <!-- Background Decorative Glows -->
+  <div class="glow-effect w-[500px] h-[500px] bg-blue-600 top-0 left-1/2 -translate-x-1/2"></div>
+  <div class="glow-effect w-[400px] h-[400px] bg-purple-600 top-[600px] right-10"></div>
+
+  <!-- Navigation Bar -->
+  <nav class="sticky top-0 z-50 glass-card border-b border-slate-800/80 px-6 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <!-- Logo -->
+      <a href="#" class="flex items-center space-x-2.5 group">
+        <div class="p-1.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20 ring-1 ring-white/20 group-hover:scale-105 transition-transform">
+          <img src="favicon.png" alt="TypstCode Icon" class="w-6 h-6 object-contain" />
+        </div>
+        <span class="font-outfit font-extrabold text-xl tracking-tight text-white">TypstCode</span>
+      </a>
+
+      <!-- Links -->
+      <div class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+        <a href="#features" class="hover:text-blue-400 transition-colors">Features</a>
+        <a href="#showcase" class="hover:text-blue-400 transition-colors">Showcase</a>
+        <a href="#templates" class="hover:text-blue-400 transition-colors">Templates</a>
+        <a href="#download" class="hover:text-blue-400 transition-colors">Download</a>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center space-x-3">
+        <a href="https://github.com/aurghya-0/typstcode" target="_blank" rel="noopener noreferrer"
+           class="flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-all">
+          <i data-lucide="github" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">GitHub</span>
+        </a>
+        <a href="#download"
+           class="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-600/20 transition-all">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Get TypstCode</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative pt-20 pb-16 px-6 overflow-hidden">
+    <div class="max-w-5xl mx-auto text-center space-y-8">
+      <!-- Badge -->
+      <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold shadow-inner">
+        <i data-lucide="zap" class="w-3.5 h-3.5 text-blue-400"></i>
+        <span>Typst v0.15.0 Supported • Sub-Millisecond Live Preview</span>
+      </div>
+
+      <!-- Main Title -->
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white font-outfit leading-[1.15]">
+        The Modern Desktop Editor for <span class="gradient-text">Typst</span>
+      </h1>
+
+      <!-- Description -->
+      <p class="text-base sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-light">
+        Engineered with Electron, React, Vite, and Monaco Editor. Write papers, reports, and resumes with instant SVG live rendering and real-time error diagnostics.
+      </p>
+
+      <!-- CTA Buttons -->
+      <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
+        <a href="#download"
+           class="flex items-center space-x-2.5 px-6 py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-xl shadow-blue-500/25 transition-all transform hover:-translate-y-0.5">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Download Free for Desktop</span>
+        </a>
+        <a href="https://github.com/aurghya-0/typstcode" target="_blank" rel="noopener noreferrer"
+           class="flex items-center space-x-2.5 px-6 py-3.5 rounded-xl font-semibold text-sm text-slate-200 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all">
+          <i data-lucide="github" class="w-4 h-4"></i>
+          <span>View Source on GitHub</span>
+        </a>
+      </div>
+
+      <!-- App Mockup Frame -->
+      <div class="pt-8 relative max-w-5xl mx-auto">
+        <div class="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-blue-950/40 bg-slate-950">
+          <div class="h-9 bg-slate-900 border-b border-slate-800 flex items-center px-4 space-x-2">
+            <div class="flex space-x-1.5">
+              <div class="w-3 h-3 rounded-full bg-rose-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+            </div>
+            <div class="mx-auto text-[11px] font-mono text-slate-400">TypstCode — Split View &amp; Live SVG Preview</div>
+          </div>
+          <img src="screenshots/editor-preview-split.png" alt="TypstCode Split View" class="w-full h-auto block" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid -->
+  <section id="features" class="py-20 px-6 border-t border-slate-800/80 bg-slate-950/40">
+    <div class="max-w-7xl mx-auto space-y-12">
+      <div class="text-center space-y-3">
+        <h2 class="text-3xl font-bold text-white font-outfit">Everything You Need for Typst</h2>
+        <p class="text-sm text-slate-400 max-w-xl mx-auto">
+          Crafted to combine the raw speed of native Typst with the rich editing features of VS Code.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="glass-card rounded-2xl p-6 space-y-3 hover:border-blue-500/40 transition-colors">
+          <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl w-fit">
+            <i data-lucide="code-2" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white font-outfit">VS Code Monaco Editor</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Full syntax highlighting, line numbers, minimap, auto-closing brackets, and snippet code completion tailored for Typst markup.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="glass-card rounded-2xl p-6 space-y-3 hover:border-blue-500/40 transition-colors">
+          <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl w-fit">
+            <i data-lucide="zap" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white font-outfit">Sub-Millisecond Live Preview</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Instant SVG vector rendering direct inside Electron. Changes reflect immediately with zero page flickering or rebuild delays.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="glass-card rounded-2xl p-6 space-y-3 hover:border-blue-500/40 transition-colors">
+          <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl w-fit">
+            <i data-lucide="book-open" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white font-outfit">Starter Template Gallery</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Pre-configured templates for IEEE conference papers, university project reports, executive CVs, and mathematics cheatsheets.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="glass-card rounded-2xl p-6 space-y-3 hover:border-blue-500/40 transition-colors">
+          <div class="p-3 bg-rose-500/10 text-rose-400 rounded-xl w-fit">
+            <i data-lucide="alert-circle" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white font-outfit">Interactive Diagnostics</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Real-time error parsing from the Typst compiler. Clicking any error automatically navigates your cursor to the exact line &amp; column.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="glass-card rounded-2xl p-6 space-y-3 hover:border-blue-500/40 transition-colors">
+          <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit">
+            <i data-lucide="folder-tree" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white font-outfit">Workspace &amp; Outline Navigation</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Built-in file explorer to open workspace folders and an outline tree that extracts document headings for effortless navigation.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="glass-card rounded-2xl p-6 space-y-3 hover:border-blue-500/40 transition-colors">
+          <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl w-fit">
+            <i data-lucide="file-check" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white font-outfit">1-Click PDF &amp; PNG Export</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Export publication-ready PDF documents or high-resolution PNG page images directly powered by the local Typst binary.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Screenshot Gallery Showcase -->
+  <section id="showcase" class="py-20 px-6 border-t border-slate-800/80">
+    <div class="max-w-6xl mx-auto space-y-8">
+      <div class="text-center space-y-3">
+        <h2 class="text-3xl font-bold text-white font-outfit">Interface Gallery</h2>
+        <p class="text-sm text-slate-400 max-w-xl mx-auto">
+          Explore the clean, clutter-free user experience designed for focus and productivity.
+        </p>
+      </div>
+
+      <!-- Tab Buttons -->
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <button onclick="switchTab('split')" id="tab-split" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition-all">
+          Split View
+        </button>
+        <button onclick="switchTab('welcome')" id="tab-welcome" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all">
+          Welcome Screen
+        </button>
+        <button onclick="switchTab('templates')" id="tab-templates" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all">
+          Template Gallery
+        </button>
+        <button onclick="switchTab('editor')" id="tab-editor" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all">
+          Full Editor
+        </button>
+        <button onclick="switchTab('preview')" id="tab-preview" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all">
+          Live Preview
+        </button>
+      </div>
+
+      <!-- Active Screenshot Display -->
+      <div class="glass-card rounded-2xl p-2 sm:p-4 border border-slate-800 shadow-2xl">
+        <img id="showcase-img" src="screenshots/editor-preview-split.png" alt="TypstCode Showcase" class="w-full h-auto rounded-xl block transition-opacity duration-200" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Download & Installation Section -->
+  <section id="download" class="py-20 px-6 border-t border-slate-800/80 bg-slate-950/60">
+    <div class="max-w-4xl mx-auto text-center space-y-10">
+      <div class="space-y-3">
+        <h2 class="text-3xl font-bold text-white font-outfit">Download TypstCode Today</h2>
+        <p class="text-sm text-slate-400 max-w-md mx-auto">
+          Free, open source, and available for Windows, macOS, and Linux.
+        </p>
+      </div>
+
+      <!-- Download Options Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Windows -->
+        <div class="glass-card p-6 rounded-2xl flex flex-col items-center justify-between space-y-4 hover:border-blue-500/50 transition-all">
+          <div class="p-3.5 bg-blue-500/10 text-blue-400 rounded-xl">
+            <i data-lucide="monitor" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white font-outfit">Windows</h3>
+            <p class="text-xs text-slate-400 mt-1">Windows 10 / 11 (.exe)</p>
+          </div>
+          <a href="https://github.com/aurghya-0/typstcode/releases/latest" target="_blank" rel="noopener noreferrer"
+             class="w-full py-2.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-colors">
+            Download .exe
+          </a>
+        </div>
+
+        <!-- macOS -->
+        <div class="glass-card p-6 rounded-2xl flex flex-col items-center justify-between space-y-4 hover:border-blue-500/50 transition-all">
+          <div class="p-3.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
+            <i data-lucide="laptop" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white font-outfit">macOS</h3>
+            <p class="text-xs text-slate-400 mt-1">Intel &amp; Apple Silicon (.dmg)</p>
+          </div>
+          <a href="https://github.com/aurghya-0/typstcode/releases/latest" target="_blank" rel="noopener noreferrer"
+             class="w-full py-2.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-colors">
+            Download .dmg
+          </a>
+        </div>
+
+        <!-- Linux -->
+        <div class="glass-card p-6 rounded-2xl flex flex-col items-center justify-between space-y-4 hover:border-blue-500/50 transition-all">
+          <div class="p-3.5 bg-amber-500/10 text-amber-400 rounded-xl">
+            <i data-lucide="terminal" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white font-outfit">Linux</h3>
+            <p class="text-xs text-slate-400 mt-1">AppImage, DEB, &amp; RPM</p>
+          </div>
+          <a href="https://github.com/aurghya-0/typstcode/releases/latest" target="_blank" rel="noopener noreferrer"
+             class="w-full py-2.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white shadow-md transition-colors">
+            Download Package
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-10 px-6 border-t border-slate-800/80 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-2">
+        <img src="favicon.png" alt="Logo" class="w-4 h-4 object-contain" />
+        <span class="font-outfit font-bold text-slate-300">TypstCode</span>
+        <span>— Released under the MIT License</span>
+      </div>
+      <div>
+        Created with ❤️ by <a href="https://github.com/aurghya-0" target="_blank" rel="noopener noreferrer" class="text-slate-300 hover:text-blue-400 font-medium transition-colors">Aurghyadip Kundu</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script for Tab Switching & Lucide Icons -->
+  <script>
+    lucide.createIcons();
+
+    const screenshots = {
+      split: 'screenshots/editor-preview-split.png',
+      welcome: 'screenshots/welcome-screen.png',
+      templates: 'screenshots/template-modal.png',
+      editor: 'screenshots/editor-full-view.png',
+      preview: 'screenshots/live-preview.png'
+    };
+
+    function switchTab(key) {
+      const img = document.getElementById('showcase-img');
+      img.style.opacity = 0;
+      setTimeout(() => {
+        img.src = screenshots[key];
+        img.style.opacity = 1;
+      }, 150);
+
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        btn.className = 'tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all';
+      });
+
+      const activeBtn = document.getElementById(`tab-${key}`);
+      if (activeBtn) {
+        activeBtn.className = 'tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-md shadow-blue-500/20 transition-all';
+      }
+    }
+  </script>
+</body>
+</html>
