@@ -41,20 +41,29 @@ jobs:
       - name: Build web application
         run: npm run build
 
-      - name: Build & Publish (Linux)
+      - name: Build binaries (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npx electron-builder --linux --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --linux --publish never
 
-      - name: Build & Publish (macOS)
+      - name: Build binaries (macOS)
         if: matrix.os == 'macos-latest'
-        run: npx electron-builder --mac --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish never
 
-      - name: Build & Publish (Windows)
+      - name: Build binaries (Windows)
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win --publish always
+        run: npx electron-builder --win --publish never
+
+      - name: Upload binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.dmg
+            release/*.zip
+            release/*.exe
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
