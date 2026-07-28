@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-electron/
+release/
+out/
+build/
+
+# Cache & Temp
+.cache/
+*.log
+.DS_Store

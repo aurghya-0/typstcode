@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-bg-main: #07090e;
+    --color-bg-surface: #0f172a;
+    --color-bg-card: #1e293b;
+    --color-accent: #3b82f6;
+    --color-accent-hover: #2563eb;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glassmorphism effects */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-toolbar {
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* SVG Preview Styling */
+.typst-svg-container svg {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.1);
+  background-color: white;
+  border-radius: 2px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Pulse animation for compilation indicator */
+@keyframes compile-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.anim-compile {
+  animation: compile-glow 1.2s infinite ease-in-out;
+}
