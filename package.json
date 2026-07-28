@@ -1,6 +1,6 @@
 {
   "name": "typstcode",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Modern VS Code-grade Typst Editor with Live SVG/PDF Preview",
   "main": "dist-electron/main.js",
   "type": "module",

@@ -72,3 +72,7 @@ git push origin v1.0.0
 - **Code Editor**: `@monaco-editor/react` (Monaco Editor engine)
 - **Compiler**: Local `typst` binary (via Node `child_process.spawn`)
 - **Icons**: `lucide-react`
+
+## Todo
+- [ ] Sign release.
+- [ ] Optimize the release to keep package size small.
