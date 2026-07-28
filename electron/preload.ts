@@ -1,4 +1,6 @@
-import { contextBridge, ipcRenderer } from 'electron';
+const { contextBridge, ipcRenderer } = require('electron');
+
+console.log('[TypstCode Preload] Exposing electronAPI on window...');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   compileTypst: (code: string, rootDir?: string) =>

@@ -17,6 +17,7 @@ interface EditorProps {
   onCursorChange: (line: number, column: number) => void;
   onSave: () => void;
   onCompile: () => void;
+  targetLine?: { line: number; column?: number; timestamp: number } | null;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -25,10 +26,27 @@ export const Editor: React.FC<EditorProps> = ({
   diagnostics,
   onCursorChange,
   onSave,
-  onCompile
+  onCompile,
+  targetLine
 }) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+
+  const onSaveRef = useRef(onSave);
+  const onCompileRef = useRef(onCompile);
+  const onCursorChangeRef = useRef(onCursorChange);
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
+  useEffect(() => {
+    onCompileRef.current = onCompile;
+  }, [onCompile]);
+
+  useEffect(() => {
+    onCursorChangeRef.current = onCursorChange;
+  }, [onCursorChange]);
 
   const handleEditorWillMount = (monaco: Monaco) => {
     registerTypstLanguage(monaco);
@@ -40,16 +58,16 @@ export const Editor: React.FC<EditorProps> = ({
 
     // Track cursor position
     editorInstance.onDidChangeCursorPosition((e) => {
-      onCursorChange(e.position.lineNumber, e.position.column);
+      onCursorChangeRef.current(e.position.lineNumber, e.position.column);
     });
 
     // Custom Keybindings
     editorInstance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      onSave();
+      onSaveRef.current();
     });
 
     editorInstance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      onCompile();
+      onCompileRef.current();
     });
   };
 
@@ -77,6 +95,22 @@ export const Editor: React.FC<EditorProps> = ({
 
     monacoRef.current.editor.setModelMarkers(model, 'typst', markers);
   }, [diagnostics]);
+
+  // Focus and jump to target line when navigation is requested (e.g. outline or error click)
+  useEffect(() => {
+    if (!targetLine || !editorRef.current) return;
+    const { line, column } = targetLine;
+    const model = editorRef.current.getModel();
+    if (!model) return;
+
+    const validLine = Math.max(1, Math.min(line, model.getLineCount()));
+    const maxCol = model.getLineMaxColumn(validLine);
+    const validCol = Math.max(1, Math.min(column || 1, maxCol));
+
+    editorRef.current.revealLineInCenter(validLine);
+    editorRef.current.setPosition({ lineNumber: validLine, column: validCol });
+    editorRef.current.focus();
+  }, [targetLine]);
 
   return (
     <div className="w-full h-full relative bg-[#0b0f19]">

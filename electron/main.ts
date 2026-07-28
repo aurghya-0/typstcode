@@ -17,6 +17,17 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
+// Normalize cross-platform file paths (e.g. Windows drive letters C:\ in WSL Linux)
+function toNativePath(p: string | null | undefined): string {
+  if (!p) return '';
+  if (process.platform === 'linux' && /^[a-zA-Z]:[/\\]/.test(p)) {
+    const drive = p[0].toLowerCase();
+    const rest = p.slice(2).replace(/\\/g, '/');
+    return `/mnt/${drive}${rest.startsWith('/') ? '' : '/'}${rest}`;
+  }
+  return p;
+}
+
 // Ensure Snap-compatible cache working directory inside $HOME instead of /tmp
 function getCacheDir(): string {
   const baseDir = path.join(os.homedir(), '.cache', 'typstcode');
@@ -40,9 +51,9 @@ function createWindow() {
     },
     backgroundColor: '#090d16',
     webPreferences: {
-      preload: fs.existsSync(path.join(__dirname, 'preload.mjs'))
-        ? path.join(__dirname, 'preload.mjs')
-        : path.join(__dirname, 'preload.js'),
+      preload: fs.existsSync(path.join(__dirname, 'preload.js'))
+        ? path.join(__dirname, 'preload.js')
+        : path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
@@ -84,7 +95,7 @@ ipcMain.handle('typst:compile', async (_event, { code, rootDir }: { code: string
   try {
     fs.writeFileSync(inputFilePath, code, 'utf-8');
 
-    const compileRootDir = rootDir || tempDir;
+    const compileRootDir = rootDir ? toNativePath(rootDir) : tempDir;
     const args = ['compile', inputFilePath, outputPattern, '--format', 'svg', '--root', compileRootDir];
 
     return await new Promise((resolve) => {
@@ -165,6 +176,7 @@ ipcMain.handle('typst:compile', async (_event, { code, rootDir }: { code: string
 
 // IPC Handler: File Open Dialog
 ipcMain.handle('file:open', async () => {
+  console.log('[Main IPC] file:open handler invoked');
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
@@ -174,56 +186,81 @@ ipcMain.handle('file:open', async () => {
     ]
   });
 
+  console.log('[Main IPC] file:open dialog result:', result);
   if (result.canceled || result.filePaths.length === 0) {
     return null;
   }
 
-  const filePath = result.filePaths[0];
+  const filePath = toNativePath(result.filePaths[0]);
+  console.log('[Main IPC] file:open normalized filePath:', filePath);
   const content = fs.readFileSync(filePath, 'utf-8');
   return { filePath, content };
 });
 
 // IPC Handler: Folder Open Dialog
 ipcMain.handle('folder:open', async () => {
+  console.log('[Main IPC] folder:open handler invoked');
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Open Workspace Folder',
     properties: ['openDirectory']
   });
 
+  console.log('[Main IPC] folder:open dialog result:', result);
   if (result.canceled || result.filePaths.length === 0) {
     return null;
   }
 
-  const dirPath = result.filePaths[0];
+  const dirPath = toNativePath(result.filePaths[0]);
+  console.log('[Main IPC] folder:open normalized dirPath:', dirPath);
   return { dirPath };
 });
 
 // IPC Handler: File Save Dialog
 ipcMain.handle('file:save', async (_event, { filePath, content }: { filePath: string | null; content: string }) => {
-  let targetPath = filePath;
+  console.log('[Main IPC] file:save handler invoked with filePath:', filePath, 'content length:', content?.length);
+  let targetPath = filePath ? toNativePath(filePath) : null;
+  console.log('[Main IPC] file:save targetPath after toNativePath:', targetPath);
 
   if (!targetPath) {
+    console.log('[Main IPC] file:save targetPath is null, opening showSaveFilePicker dialog...');
     if (!mainWindow) return null;
     const result = await dialog.showSaveDialog(mainWindow, {
       title: 'Save Typst File',
       defaultPath: 'document.typ',
-      filters: [{ name: 'Typst Files', extensions: ['typ'] }]
+      filters: [
+        { name: 'Typst Files', extensions: ['typ'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
     });
 
+    console.log('[Main IPC] file:save showSaveDialog result:', result);
     if (result.canceled || !result.filePath) {
       return null;
     }
-    targetPath = result.filePath;
+    targetPath = toNativePath(result.filePath);
+  } else if (!path.isAbsolute(targetPath)) {
+    targetPath = path.resolve(process.cwd(), targetPath);
+    console.log('[Main IPC] file:save resolved relative targetPath to absolute:', targetPath);
   }
 
-  fs.writeFileSync(targetPath, content, 'utf-8');
-  return { filePath: targetPath };
+  try {
+    console.log('[Main IPC] Writing file directly to targetPath:', targetPath);
+    fs.writeFileSync(targetPath, content, 'utf-8');
+    console.log('[Main IPC] File write successful to:', targetPath);
+    return { filePath: targetPath };
+  } catch (err: any) {
+    console.error('[Main IPC] fs.writeFileSync error:', err);
+    return null;
+  }
 });
 
 // IPC Handler: Read Directory Tree for File Browser
 ipcMain.handle('fs:readDir', async (_event, { dirPath }: { dirPath?: string }) => {
-  const targetDir = dirPath || process.cwd();
+  console.log('[Main IPC] fs:readDir handler invoked with dirPath:', dirPath);
+  const nativeDir = dirPath ? toNativePath(dirPath) : process.cwd();
+  const targetDir = path.resolve(nativeDir);
+  console.log('[Main IPC] fs:readDir resolved targetDir:', targetDir);
   try {
     const entries = fs.readdirSync(targetDir, { withFileTypes: true });
 
@@ -246,19 +283,26 @@ ipcMain.handle('fs:readDir', async (_event, { dirPath }: { dirPath?: string }) =
         return a.name.localeCompare(b.name);
       });
 
+    console.log('[Main IPC] fs:readDir found items count:', items.length);
     return { success: true, dirPath: targetDir, items };
   } catch (err: any) {
+    console.error('[Main IPC] fs:readDir error:', err);
     return { success: false, dirPath: targetDir, items: [], error: err.message };
   }
 });
 
 // IPC Handler: Read Specific File by Path
 ipcMain.handle('fs:readFileByPath', async (_event, { filePath }: { filePath: string }) => {
+  console.log('[Main IPC] fs:readFileByPath handler invoked with filePath:', filePath);
+  const targetPath = toNativePath(filePath);
+  console.log('[Main IPC] fs:readFileByPath normalized targetPath:', targetPath);
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return { success: true, filePath, content };
+    const content = fs.readFileSync(targetPath, 'utf-8');
+    console.log('[Main IPC] fs:readFileByPath successfully read content length:', content.length);
+    return { success: true, filePath: targetPath, content };
   } catch (err: any) {
-    return { success: false, filePath, content: '', error: err.message };
+    console.error('[Main IPC] readFileByPath failed for', filePath, '->', targetPath, err);
+    return { success: false, filePath: targetPath, content: '', error: err.message };
   }
 });
 
@@ -275,7 +319,7 @@ ipcMain.handle('export:pdf', async (_event, { code, suggestedName }: { code: str
     return null;
   }
 
-  const outputPath = saveResult.filePath;
+  const outputPath = toNativePath(saveResult.filePath);
   const cacheBase = getCacheDir();
   const tempDir = fs.mkdtempSync(path.join(cacheBase, 'pdf-'));
   const inputFilePath = path.join(tempDir, 'document.typ');
@@ -309,7 +353,7 @@ ipcMain.handle('export:png', async (_event, { code, ppi = 144 }: { code: string;
     return null;
   }
 
-  const outputPath = saveResult.filePath;
+  const outputPath = toNativePath(saveResult.filePath);
   const cacheBase = getCacheDir();
   const tempDir = fs.mkdtempSync(path.join(cacheBase, 'png-'));
   const inputFilePath = path.join(tempDir, 'document.typ');

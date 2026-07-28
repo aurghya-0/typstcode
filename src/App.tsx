@@ -36,8 +36,8 @@ declare global {
 export const App: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState<boolean>(false);
-  const [code, setCode] = useState<string>('');
-  const [filePath, setFilePath] = useState<string | null>(null);
+  const [code, setCodeState] = useState<string>('');
+  const [filePath, setFilePathState] = useState<string | null>(null);
   const [autoCompile, setAutoCompile] = useState<boolean>(true);
   const [isCompiling, setIsCompiling] = useState<boolean>(false);
   const [pages, setPages] = useState<string[]>([]);
@@ -49,6 +49,7 @@ export const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isErrorPanelOpen, setIsErrorPanelOpen] = useState<boolean>(true);
   const [cursorPos, setCursorPos] = useState<{ line: number; column: number }>({ line: 1, column: 1 });
+  const [targetLine, setTargetLine] = useState<{ line: number; column?: number; timestamp: number } | null>(null);
   const [typstVersion, setTypstVersion] = useState<string>('Typst v0.15.0');
 
   // Workspace Folder & File Tree State
@@ -60,6 +61,30 @@ export const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const fileObjectsMapRef = useRef<Map<string, File>>(new Map());
+  const fileHandleRef = useRef<any>(null);
+
+  // Synchronously synchronized Refs and State setters for filePath and code
+  const filePathRef = useRef<string | null>(filePath);
+  const codeRef = useRef<string>(code);
+
+  const setFilePath = useCallback((newPath: string | null) => {
+    console.log('[TypstCode Debug] setFilePath called with:', newPath);
+    filePathRef.current = newPath;
+    setFilePathState(newPath);
+  }, []);
+
+  const setCode = useCallback((newCode: string | ((prev: string) => string)) => {
+    if (typeof newCode === 'function') {
+      setCodeState((prev) => {
+        const next = newCode(prev);
+        codeRef.current = next;
+        return next;
+      });
+    } else {
+      codeRef.current = newCode;
+      setCodeState(newCode);
+    }
+  }, []);
 
   // Helper for cross-platform root directory parsing
   const getRootDir = (pathStr: string | null) => {
@@ -70,16 +95,18 @@ export const App: React.FC = () => {
 
   // Load Directory Tree
   const loadDirectory = useCallback(async (dirPath?: string) => {
+    console.log('[TypstCode Debug] loadDirectory requested for dirPath:', dirPath);
     if (window.electronAPI?.readDir) {
       setIsLoadingFiles(true);
       try {
         const res = await window.electronAPI.readDir(dirPath);
+        console.log('[TypstCode Debug] electronAPI.readDir response:', res);
         if (res.success) {
           setCurrentDirPath(res.dirPath);
           setFiles(res.items);
         }
       } catch (err) {
-        console.error('Failed to load directory:', err);
+        console.error('[TypstCode Debug] Failed to load directory:', err);
       } finally {
         setIsLoadingFiles(false);
       }
@@ -87,8 +114,14 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (window.electronAPI?.readDir) {
+    console.log('[TypstCode Debug] App Mounted');
+    console.log('[TypstCode Debug] window.electronAPI available?:', !!window.electronAPI);
+    if (window.electronAPI) {
+      console.log('[TypstCode Debug] window.electronAPI keys:', Object.keys(window.electronAPI));
       loadDirectory();
+    } else {
+      console.log('[TypstCode Debug] Running in Web environment (window.electronAPI undefined)');
+      console.log('[TypstCode Debug] showOpenFilePicker supported?:', 'showOpenFilePicker' in window);
     }
   }, [loadDirectory]);
 
@@ -192,34 +225,39 @@ export const App: React.FC = () => {
 
   // New File Handler
   const handleNewFile = useCallback(() => {
+    fileHandleRef.current = null;
     setCode('');
     setFilePath(null);
     setShowWelcome(false);
     handleCompile('', null);
-  }, [handleCompile]);
+  }, [handleCompile, setCode, setFilePath]);
 
   const handleSelectTemplate = useCallback((template: TypstTemplate) => {
+    fileHandleRef.current = null;
     setCode(template.code);
     setFilePath(null);
     setShowWelcome(false);
     handleCompile(template.code, null);
-  }, [handleCompile]);
+  }, [handleCompile, setCode, setFilePath]);
 
   // File Operations
   const handleOpenFileByPath = useCallback(async (selectedPath: string) => {
+    console.log('[TypstCode Debug] handleOpenFileByPath triggered with selectedPath:', selectedPath);
     if (window.electronAPI?.readFileByPath) {
       try {
+        console.log('[TypstCode Debug] Calling window.electronAPI.readFileByPath(', selectedPath, ')');
         const res = await window.electronAPI.readFileByPath(selectedPath);
-        if (res.success) {
+        console.log('[TypstCode Debug] electronAPI.readFileByPath response:', res);
+        if (res && res.success && res.filePath) {
           setFilePath(res.filePath);
           setCode(res.content);
           setShowWelcome(false);
           handleCompile(res.content, res.filePath);
         } else {
-          console.error('Failed to read file by path:', res.error);
+          console.error('[TypstCode Debug] Failed to read file by path:', res?.error || 'Unknown error');
         }
       } catch (err) {
-        console.error('Error reading file by path:', err);
+        console.error('[TypstCode Debug] Error reading file by path:', err);
       }
     } else {
       // Browser environment fallback: read from fileObjectsMap
@@ -240,37 +278,68 @@ export const App: React.FC = () => {
         reader.readAsText(fileObj);
       }
     }
-  }, [handleCompile]);
+  }, [handleCompile, setCode, setFilePath]);
 
   const handleOpenFile = useCallback(async () => {
+    console.log('[TypstCode Debug] handleOpenFile triggered');
     if (window.electronAPI?.openFile) {
       try {
+        console.log('[TypstCode Debug] Calling window.electronAPI.openFile()');
         const res = await window.electronAPI.openFile();
-        if (res) {
+        console.log('[TypstCode Debug] electronAPI.openFile response:', res);
+        if (res && res.filePath) {
           setFilePath(res.filePath);
           setCode(res.content);
           setShowWelcome(false);
           handleCompile(res.content, res.filePath);
         }
       } catch (err) {
-        console.error('Failed to open file via Electron dialog:', err);
+        console.error('[TypstCode Debug] Failed to open file via Electron dialog:', err);
+      }
+    } else if ('showOpenFilePicker' in window) {
+      try {
+        console.log('[TypstCode Debug] Calling showOpenFilePicker');
+        const [handle] = await (window as any).showOpenFilePicker({
+          types: [
+            {
+              description: 'Typst Files',
+              accept: { 'text/plain': ['.typ', '.txt'] }
+            }
+          ]
+        });
+        const file = await handle.getFile();
+        const content = await file.text();
+        fileHandleRef.current = handle;
+        setFilePath(file.name);
+        setCode(content);
+        setShowWelcome(false);
+        handleCompile(content, file.name);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('[TypstCode Debug] Failed to open file via Web API:', err);
+        }
       }
     } else if (fileInputRef.current) {
+      console.log('[TypstCode Debug] Clicking fallback fileInputRef');
       fileInputRef.current.click();
     }
-  }, [handleCompile]);
+  }, [handleCompile, setCode, setFilePath]);
 
   const handleOpenFolder = useCallback(async () => {
+    console.log('[TypstCode Debug] handleOpenFolder triggered');
     if (window.electronAPI?.openFolder) {
       try {
+        console.log('[TypstCode Debug] Calling window.electronAPI.openFolder()');
         const res = await window.electronAPI.openFolder();
+        console.log('[TypstCode Debug] electronAPI.openFolder response:', res);
         if (res && res.dirPath) {
           await loadDirectory(res.dirPath);
         }
       } catch (err) {
-        console.error('Failed to open folder:', err);
+        console.error('[TypstCode Debug] Failed to open folder:', err);
       }
     } else if (folderInputRef.current) {
+      console.log('[TypstCode Debug] Clicking fallback folderInputRef');
       folderInputRef.current.click();
     }
   }, [loadDirectory]);
@@ -339,18 +408,82 @@ export const App: React.FC = () => {
     e.target.value = '';
   };
 
-  const handleSaveFile = async () => {
-    if (!window.electronAPI) return;
-    const res = await window.electronAPI.saveFile(filePath, code);
-    if (res) {
-      setFilePath(res.filePath);
-    }
-  };
+  const handleSaveFile = useCallback(async () => {
+    const currentFilePath = filePathRef.current;
+    const currentCode = codeRef.current;
+    console.log('[TypstCode Debug] handleSaveFile triggered. currentFilePath from ref:', currentFilePath, 'code length:', currentCode?.length);
 
-  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+O)
+    if (window.electronAPI?.saveFile) {
+      try {
+        console.log('[TypstCode Debug] Calling window.electronAPI.saveFile with filePath:', currentFilePath);
+        const res = await window.electronAPI.saveFile(currentFilePath, currentCode);
+        console.log('[TypstCode Debug] electronAPI.saveFile response:', res);
+        if (res && res.filePath) {
+          setFilePath(res.filePath);
+        }
+      } catch (err) {
+        console.error('[TypstCode Debug] Failed to save file via Electron:', err);
+      }
+    } else if (fileHandleRef.current) {
+      // Browser Web File System Access API direct write
+      try {
+        console.log('[TypstCode Debug] Writing directly to browser fileHandleRef');
+        const writable = await fileHandleRef.current.createWritable();
+        await writable.write(currentCode);
+        await writable.close();
+        console.log('[TypstCode Debug] Direct write to fileHandleRef complete');
+      } catch (err) {
+        console.error('[TypstCode Debug] Failed to save directly to file handle:', err);
+      }
+    } else if ('showSaveFilePicker' in window) {
+      // Browser Web File System Access API Save As
+      try {
+        const fileName = (currentFilePath ? currentFilePath.split(/[/\\]/).pop() : 'document.typ') || 'document.typ';
+        console.log('[TypstCode Debug] Opening showSaveFilePicker with suggestedName:', fileName);
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName.endsWith('.typ') ? fileName : `${fileName}.typ`,
+          types: [
+            {
+              description: 'Typst Files',
+              accept: { 'text/plain': ['.typ'] }
+            }
+          ]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(currentCode);
+        await writable.close();
+        fileHandleRef.current = handle;
+        setFilePath(handle.name);
+        console.log('[TypstCode Debug] showSaveFilePicker complete, saved as:', handle.name);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('[TypstCode Debug] Failed to save file via Web API:', err);
+        }
+      }
+    } else {
+      // Browser environment fallback: trigger blob download
+      console.log('[TypstCode Debug] Fallback blob download triggered');
+      const fileName = (currentFilePath ? currentFilePath.split(/[/\\]/).pop() : 'document.typ') || 'document.typ';
+      const cleanFileName = fileName.endsWith('.typ') ? fileName : `${fileName}.typ`;
+      const blob = new Blob([currentCode], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = cleanFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  }, [setFilePath]);
+
+  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+O, Ctrl+S)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveFile();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         handleNewFile();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
@@ -360,7 +493,7 @@ export const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNewFile, handleOpenFile]);
+  }, [handleSaveFile, handleNewFile, handleOpenFile]);
 
   const handleExportPdf = async () => {
     if (!window.electronAPI) return;
@@ -379,8 +512,12 @@ export const App: React.FC = () => {
     setCode((prev) => prev + snippet);
   };
 
-  const handleJumpToLine = (line: number) => {
-    setCursorPos({ line, column: 1 });
+  const handleJumpToLine = (line: number, column: number = 1) => {
+    setTargetLine({ line, column, timestamp: Date.now() });
+    setCursorPos({ line, column });
+    if (viewMode === 'preview') {
+      setViewMode('split');
+    }
   };
 
   return (
@@ -426,6 +563,7 @@ export const App: React.FC = () => {
           onOpenFolder={handleOpenFolder}
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
+          currentLine={cursorPos.line}
         />
 
         {/* Center/Right Pane Workspace */}
@@ -453,6 +591,7 @@ export const App: React.FC = () => {
                     onCursorChange={(l, c) => setCursorPos({ line: l, column: c })}
                     onSave={handleSaveFile}
                     onCompile={() => handleCompile(code)}
+                    targetLine={targetLine}
                   />
                 </div>
               )}
@@ -477,7 +616,7 @@ export const App: React.FC = () => {
             {/* Bottom Diagnostic Panel for Errors */}
             <ErrorPanel
               diagnostics={diagnostics}
-              onSelectDiagnostic={(line) => handleJumpToLine(line)}
+              onSelectDiagnostic={(line, col) => handleJumpToLine(line, col)}
               isOpen={isErrorPanelOpen}
               setIsOpen={setIsErrorPanelOpen}
             />

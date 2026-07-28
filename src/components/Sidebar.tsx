@@ -38,6 +38,7 @@ interface SidebarProps {
   onOpenFolder: () => void;
   isCollapsed: boolean;
   setIsCollapsed: (val: boolean) => void;
+  currentLine?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -52,7 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectHeading,
   onOpenFolder,
   isCollapsed,
-  setIsCollapsed
+  setIsCollapsed,
+  currentLine
 }) => {
   const [activeTab, setActiveTab] = useState<'files' | 'outline' | 'snippets'>('files');
 
@@ -65,17 +67,87 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  // Clean Typst markup tags for clean display in outline UI
+  const cleanTypstMarkup = (text: string): string => {
+    return text
+      // Remove labels at end <label>
+      .replace(/\s*<[a-zA-Z0-9_:-]+>\s*$/, '')
+      // Remove #text(...)[content] or #text[content] -> content
+      .replace(/#text\([^)]*\)\[([^\]]+)\]/g, '$1')
+      .replace(/#text\[([^\]]+)\]/g, '$1')
+      // Remove #emph[content] -> content
+      .replace(/#emph\[([^\]]+)\]/g, '$1')
+      // Remove #strong[content] -> content
+      .replace(/#strong\[([^\]]+)\]/g, '$1')
+      // Remove #smallcaps[content] -> content
+      .replace(/#smallcaps\[([^\]]+)\]/g, '$1')
+      // Remove *bold* -> bold
+      .replace(/\*([^*]+)\*/g, '$1')
+      // Remove _italic_ -> italic
+      .replace(/_([^_]+)_/g, '$1')
+      // Remove `code` -> code
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove leading/trailing brackets
+      .replace(/^\[(.*)\]$/, '$1')
+      .trim();
+  };
+
   // Extract headings from Typst source code
   const extractHeadings = (typstCode: string) => {
     const lines = typstCode.split('\n');
     const headings: Array<{ level: number; title: string; line: number }> = [];
+    let inBlockComment = false;
+    let inRawBlock = false;
 
     lines.forEach((lineText, idx) => {
-      const match = lineText.match(/^(=+)\s+(.+)$/);
-      if (match) {
+      const trimmed = lineText.trim();
+
+      if (trimmed.startsWith('```')) {
+        inRawBlock = !inRawBlock;
+        return;
+      }
+      if (inRawBlock) return;
+
+      if (trimmed.startsWith('/*')) {
+        inBlockComment = true;
+      }
+      if (inBlockComment) {
+        if (trimmed.endsWith('*/') || trimmed.includes('*/')) {
+          inBlockComment = false;
+        }
+        return;
+      }
+
+      if (trimmed.startsWith('//')) return;
+
+      // 1. Equal sign markup headings: = Title, == Subtitle, etc.
+      const markupMatch = lineText.match(/^\s*(=+)\s+(.+)$/);
+      if (markupMatch) {
+        const level = markupMatch[1].length;
+        const rawTitle = markupMatch[2].trim();
+        const title = cleanTypstMarkup(rawTitle);
         headings.push({
-          level: match[1].length,
-          title: match[2].trim(),
+          level,
+          title: title || rawTitle,
+          line: idx + 1
+        });
+        return;
+      }
+
+      // 2. Function-style headings: #heading[Title] or #heading(level: 2)[Title]
+      const funcMatch = lineText.match(/^\s*#heading\s*(?:\(([^)]*)\))?\s*\[(.*)\]\s*$/);
+      if (funcMatch) {
+        const args = funcMatch[1] || '';
+        const rawTitle = funcMatch[2].trim();
+        let level = 1;
+        const levelMatch = args.match(/level\s*:\s*(\d+)/);
+        if (levelMatch) {
+          level = parseInt(levelMatch[1], 10) || 1;
+        }
+        const title = cleanTypstMarkup(rawTitle);
+        headings.push({
+          level,
+          title: title || rawTitle,
           line: idx + 1
         });
       }
@@ -85,6 +157,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const headings = extractHeadings(code);
+
+  // Determine active heading index based on currentLine
+  let activeHeadingIndex = -1;
+  if (currentLine && headings.length > 0) {
+    for (let i = headings.length - 1; i >= 0; i--) {
+      if (headings[i].line <= currentLine) {
+        activeHeadingIndex = i;
+        break;
+      }
+    }
+  }
 
   const getFileIcon = (fileName: string, isDirectory: boolean) => {
     if (isDirectory) return <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
@@ -344,26 +427,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* OUTLINE TAB */}
         {activeTab === 'outline' && (
           <div className="space-y-1">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
-              Headings Navigation
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
+              <span>Headings Navigation</span>
+              {headings.length > 0 && (
+                <span className="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
+                  {headings.length}
+                </span>
+              )}
             </div>
 
             {headings.length === 0 ? (
-              <div className="text-xs text-slate-500 italic p-2 border border-dashed border-slate-800 rounded text-center">
-                No headings found in current file
+              <div className="text-xs text-slate-500 italic p-3 border border-dashed border-slate-800/80 rounded-lg text-center bg-slate-950/40 space-y-1">
+                <p>No headings found in current file</p>
+                <p className="text-[10px] text-slate-600 not-italic">Use = Section or == Subsection to create headings</p>
               </div>
             ) : (
-              headings.map((h, i) => (
-                <button
-                  key={i}
-                  onClick={() => onSelectHeading(h.line)}
-                  className="w-full text-left flex items-center space-x-2 px-2 py-1.5 rounded text-xs text-slate-300 hover:bg-slate-800/80 hover:text-blue-400 transition-colors group"
-                  style={{ paddingLeft: `${(h.level - 1) * 10 + 8}px` }}
-                >
-                  <span className="text-slate-500 font-mono text-[10px]">L{h.line}</span>
-                  <span className="truncate flex-1">{h.title}</span>
-                </button>
-              ))
+              headings.map((h, i) => {
+                const isActive = activeHeadingIndex === i;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => onSelectHeading(h.line)}
+                    className={`w-full text-left flex items-center space-x-2 px-2 py-1.5 rounded text-xs transition-all group ${
+                      isActive
+                        ? 'bg-blue-600/20 text-blue-300 font-medium border border-blue-500/30 shadow-sm'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-blue-400'
+                    }`}
+                    style={{ paddingLeft: `${Math.max(0, h.level - 1) * 12 + 8}px` }}
+                  >
+                    <span
+                      className={`text-[9px] font-bold px-1 py-0.5 rounded font-mono shrink-0 ${
+                        isActive
+                          ? 'bg-blue-500/30 text-blue-200'
+                          : 'bg-slate-800/80 text-slate-400 group-hover:bg-blue-950 group-hover:text-blue-300'
+                      }`}
+                    >
+                      H{h.level}
+                    </span>
+                    <span className="truncate flex-1">{h.title}</span>
+                    <span className="text-[10px] font-mono text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      :{h.line}
+                    </span>
+                  </button>
+                );
+              })
             )}
           </div>
         )}
