@@ -35,10 +35,31 @@ Start Vite dev server and launch Electron simultaneously:
 npm run dev
 ```
 
-### 3. Packaging for Production
-Build web assets and produce native desktop executables (`.AppImage`, `.deb`, `.dmg`, `.exe`):
+### 3. Packaging for Distribution
+
+Build web assets and generate installer packages for your platform:
+
 ```bash
-npm run build
+# Build for all platforms (Windows, macOS, Linux)
+npm run dist:all
+
+# Build Windows NSIS Installer (.exe)
+npm run dist:win
+
+# Build macOS DMG & ZIP (.dmg, .zip)
+npm run dist:mac
+
+# Build Linux AppImage, DEB, & RPM (.AppImage, .deb, .rpm)
+npm run dist:linux
+```
+
+### 4. Automated CI/CD Releases
+
+Push a version tag to trigger the GitHub Actions workflow (`.github/workflows/release.yml`) to automatically build installers for Windows (`.exe`), macOS (`.dmg`, `.zip`), and Linux (`.AppImage`, `.deb`, `.rpm`) and upload them to a GitHub Release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ---

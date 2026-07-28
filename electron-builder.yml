@@ -1,10 +1,27 @@
 appId: com.typstcode.app
 productName: TypstCode
+copyright: "Copyright © 2026 Aurghyadip Kundu"
+
+publish:
+  provider: github
+  owner: aurghya-0
+  repo: typstcode
+
 directories:
   output: release
+  buildResources: build
+
 files:
   - dist/**/*
   - dist-electron/**/*
+  - package.json
+
+fileAssociations:
+  - ext: typ
+    name: Typst Document
+    description: Typst Source File
+    role: Editor
+
 mac:
   category: public.app-category.developer-tools
   target:
@@ -12,12 +29,36 @@ mac:
       arch:
         - x64
         - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
 win:
   target:
     - target: nsis
       arch:
         - x64
         - arm64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: TypstCode
+  uninstallDisplayName: TypstCode
+  runAfterFinish: true
+
 linux:
   target:
     - target: AppImage
@@ -28,3 +69,11 @@ linux:
       arch:
         - x64
         - arm64
+    - target: rpm
+      arch:
+        - x64
+        - arm64
+  category: Development
+  desktop:
+    MimeType: text/x-typst;application/x-typst;
+
