@@ -102,7 +102,16 @@ export const Editor: React.FC<EditorProps> = ({
           renderLineHighlight: 'all',
           tabSize: 2,
           wordWrap: 'on',
-          padding: { top: 12, bottom: 12 }
+          padding: { top: 12, bottom: 12 },
+          quickSuggestions: {
+            other: true,
+            comments: false,
+            strings: true
+          },
+          suggestOnTriggerCharacters: true,
+          acceptSuggestionOnEnter: 'on',
+          snippetSuggestions: 'top',
+          wordBasedSuggestions: 'allDocuments'
         }}
       />
     </div>

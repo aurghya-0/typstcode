@@ -3,6 +3,7 @@ import {
   Play,
   FileCode,
   FolderOpen,
+  FolderPlus,
   Save,
   Download,
   FileType,
@@ -21,6 +22,7 @@ interface ToolbarProps {
   onCompile: () => void;
   isCompiling: boolean;
   onOpen: () => void;
+  onOpenFolder?: () => void;
   onSave: () => void;
   onExportPdf: () => void;
   onExportPng: () => void;
@@ -37,6 +39,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onCompile,
   isCompiling,
   onOpen,
+  onOpenFolder,
   onSave,
   onExportPdf,
   onExportPng,
@@ -59,7 +62,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="flex items-center space-x-1.5 text-xs text-slate-300 bg-slate-900/60 px-2.5 py-1 rounded-md border border-slate-800">
           <FileCode className="w-3.5 h-3.5 text-blue-400" />
           <span className="font-medium truncate max-w-[180px]">
-            {fileName ? fileName.split('/').pop() : 'untitled.typ'}
+            {fileName ? fileName.split(/[/\\]/).pop() : 'untitled.typ'}
           </span>
         </div>
       </div>
@@ -72,8 +75,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           title="Open Typst File (Ctrl+O)"
         >
           <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-          <span>Open</span>
+          <span>Open File</span>
         </button>
+
+        {onOpenFolder && (
+          <button
+            onClick={onOpenFolder}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/50 transition-all"
+            title="Open Workspace Folder"
+          >
+            <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+            <span>Open Folder</span>
+          </button>
+        )}
 
         <button
           onClick={onSave}

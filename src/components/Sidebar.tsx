@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Folder,
   FolderOpen,
+  FolderPlus,
   FileCode,
   FileText,
   Image as ImageIcon,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
+  CornerLeftUp,
   RefreshCw,
   Code2,
   ListTree,
@@ -27,10 +29,15 @@ interface FileItem {
 interface SidebarProps {
   code: string;
   activeFilePath: string | null;
+  currentDirPath: string;
+  files: FileItem[];
+  isLoadingFiles: boolean;
+  onLoadDirectory: (dirPath?: string) => void;
   onOpenFileByPath: (filePath: string) => void;
   onInsertSnippet: (snippet: string) => void;
   onSelectHeading: (lineNumber: number) => void;
   onOpenTemplates: () => void;
+  onOpenFolder: () => void;
   isCollapsed: boolean;
   setIsCollapsed: (val: boolean) => void;
 }
@@ -38,38 +45,28 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   code,
   activeFilePath,
+  currentDirPath,
+  files,
+  isLoadingFiles,
+  onLoadDirectory,
   onOpenFileByPath,
   onInsertSnippet,
   onSelectHeading,
   onOpenTemplates,
+  onOpenFolder,
   isCollapsed,
   setIsCollapsed
 }) => {
   const [activeTab, setActiveTab] = useState<'files' | 'outline' | 'snippets'>('files');
-  const [currentDirPath, setCurrentDirPath] = useState<string>('');
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
 
-  // Fetch Directory Files
-  const loadDirectory = async (dirPath?: string) => {
-    if (!window.electronAPI?.readDir) return;
-    setIsLoadingFiles(true);
-    try {
-      const res = await window.electronAPI.readDir(dirPath);
-      if (res.success) {
-        setCurrentDirPath(res.dirPath);
-        setFiles(res.items);
-      }
-    } catch (err) {
-      console.error('Failed to load directory:', err);
-    } finally {
-      setIsLoadingFiles(false);
+  const handleNavigateUp = () => {
+    if (!currentDirPath) return;
+    const lastIdx = Math.max(currentDirPath.lastIndexOf('/'), currentDirPath.lastIndexOf('\\'));
+    if (lastIdx > 0) {
+      const parentDir = currentDirPath.substring(0, lastIdx);
+      onLoadDirectory(parentDir);
     }
   };
-
-  useEffect(() => {
-    loadDirectory();
-  }, []);
 
   // Extract headings from Typst source code
   const extractHeadings = (typstCode: string) => {
@@ -250,29 +247,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* FILES EXPLORER TAB */}
         {activeTab === 'files' && (
           <div className="space-y-2">
-            {/* Header / Current Working Directory */}
-            <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-800/60">
-              <div className="flex items-center space-x-1.5 overflow-hidden">
-                <FolderOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-[11px] font-semibold text-slate-300 truncate" title={currentDirPath}>
-                  {currentDirPath ? currentDirPath.split('/').pop() : 'Explorer'}
-                </span>
+            {/* Header / Current Open Folder & Actions */}
+            <div className="flex flex-col space-y-1.5 px-1 pb-2 border-b border-slate-800/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5 overflow-hidden">
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-[11px] font-semibold text-slate-200 truncate max-w-[110px]" title={currentDirPath || 'Explorer'}>
+                    {currentDirPath ? currentDirPath.split(/[/\\]/).pop() : 'Explorer'}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  {currentDirPath && (
+                    <button
+                      onClick={handleNavigateUp}
+                      className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+                      title="Parent Folder (Up)"
+                    >
+                      <CornerLeftUp className="w-3 h-3 text-slate-400" />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={onOpenFolder}
+                    className="flex items-center space-x-1 px-1.5 py-0.5 bg-amber-950/50 hover:bg-amber-900/70 border border-amber-800/60 text-amber-300 rounded text-[10px] font-semibold transition-all shadow-sm"
+                    title="Open Workspace Folder"
+                  >
+                    <FolderPlus className="w-3 h-3 text-amber-400" />
+                    <span>Open</span>
+                  </button>
+
+                  <button
+                    onClick={() => onLoadDirectory(currentDirPath)}
+                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+                    title="Refresh Folder"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingFiles ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
 
-              <button
-                onClick={() => loadDirectory(currentDirPath)}
-                className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
-                title="Refresh Folder"
-              >
-                <RefreshCw className={`w-3 h-3 ${isLoadingFiles ? 'animate-spin' : ''}`} />
-              </button>
+              {/* Display full open folder path */}
+              {currentDirPath && (
+                <div
+                  className="text-[10px] text-slate-400 truncate bg-slate-900/80 px-2 py-1 rounded border border-slate-800/80 font-mono tracking-tight"
+                  title={currentDirPath}
+                >
+                  {currentDirPath}
+                </div>
+              )}
             </div>
 
             {/* File List Tree */}
             <div className="space-y-0.5">
               {files.length === 0 && !isLoadingFiles && (
-                <div className="text-xs text-slate-500 italic p-3 text-center">
-                  No files found in workspace
+                <div className="p-4 text-center space-y-2.5 border border-dashed border-slate-800/80 rounded-lg my-2 bg-slate-950/40">
+                  <Folder className="w-8 h-8 text-slate-600 mx-auto stroke-[1.5]" />
+                  <div className="text-xs text-slate-400 font-medium">No folder open</div>
+                  <button
+                    onClick={onOpenFolder}
+                    className="px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-950/80 hover:bg-amber-900/90 border border-amber-800/70 rounded-md transition-all inline-flex items-center space-x-1.5 shadow-sm"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Open Folder</span>
+                  </button>
                 </div>
               )}
 
@@ -283,7 +321,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={file.path}
                     onClick={() => {
                       if (file.isDirectory) {
-                        loadDirectory(file.path);
+                        onLoadDirectory(file.path);
                       } else {
                         onOpenFileByPath(file.path);
                       }

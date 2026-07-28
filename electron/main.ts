@@ -183,6 +183,22 @@ ipcMain.handle('file:open', async () => {
   return { filePath, content };
 });
 
+// IPC Handler: Folder Open Dialog
+ipcMain.handle('folder:open', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Open Workspace Folder',
+    properties: ['openDirectory']
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const dirPath = result.filePaths[0];
+  return { dirPath };
+});
+
 // IPC Handler: File Save Dialog
 ipcMain.handle('file:save', async (_event, { filePath, content }: { filePath: string | null; content: string }) => {
   let targetPath = filePath;

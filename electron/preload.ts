@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   compileTypst: (code: string, rootDir?: string) =>
     ipcRenderer.invoke('typst:compile', { code, rootDir }),
   openFile: () => ipcRenderer.invoke('file:open'),
+  openFolder: () => ipcRenderer.invoke('folder:open'),
   saveFile: (filePath: string | null, content: string) =>
     ipcRenderer.invoke('file:save', { filePath, content }),
   exportPdf: (code: string, suggestedName?: string) =>
