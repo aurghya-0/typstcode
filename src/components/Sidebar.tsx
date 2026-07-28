@@ -358,7 +358,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
 
                   <button
-                    onClick={() => onLoadDirectory(currentDirPath)}
+                    onClick={() => onLoadDirectory(currentDirPath || undefined)}
                     className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
                     title="Refresh Folder"
                   >

@@ -20,4 +20,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFileByPath: (filePath: string) =>
     ipcRenderer.invoke('fs:readFileByPath', { filePath }),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  onDirChanged: (callback: (data: { dirPath: string }) => void) => {
+    const handler = (_event: any, data: { dirPath: string }) => callback(data);
+    ipcRenderer.on('fs:dirChanged', handler);
+    return () => {
+      ipcRenderer.removeListener('fs:dirChanged', handler);
+    };
+  }
 });

@@ -16,6 +16,31 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
+let dirWatcher: fs.FSWatcher | null = null;
+let watchDebounceTimer: NodeJS.Timeout | null = null;
+
+function watchWorkspaceDirectory(dirPath: string) {
+  if (dirWatcher) {
+    try {
+      dirWatcher.close();
+    } catch (_) {}
+    dirWatcher = null;
+  }
+
+  try {
+    dirWatcher = fs.watch(dirPath, { recursive: false }, (_eventType, _filename) => {
+      if (watchDebounceTimer) clearTimeout(watchDebounceTimer);
+      watchDebounceTimer = setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          console.log('[Main IPC] Directory change detected in:', dirPath);
+          mainWindow.webContents.send('fs:dirChanged', { dirPath });
+        }
+      }, 300);
+    });
+  } catch (err) {
+    console.warn('[Main IPC] Could not watch directory:', dirPath, err);
+  }
+}
 
 // Normalize cross-platform file paths (e.g. Windows drive letters C:\ in WSL Linux)
 function toNativePath(p: string | null | undefined): string {
@@ -261,6 +286,14 @@ ipcMain.handle('fs:readDir', async (_event, { dirPath }: { dirPath?: string }) =
   const nativeDir = dirPath ? toNativePath(dirPath) : process.cwd();
   const targetDir = path.resolve(nativeDir);
   console.log('[Main IPC] fs:readDir resolved targetDir:', targetDir);
+  
+  // Safely attempt to watch target directory for external file additions/deletions
+  try {
+    watchWorkspaceDirectory(targetDir);
+  } catch (watchErr) {
+    console.warn('[Main IPC] watchWorkspaceDirectory exception ignored:', watchErr);
+  }
+
   try {
     const entries = fs.readdirSync(targetDir, { withFileTypes: true });
 

@@ -29,6 +29,7 @@ declare global {
       readDir: (dirPath?: string) => Promise<{ success: boolean; dirPath: string; items: Array<{ name: string; isDirectory: boolean; path: string }> }>;
       readFileByPath: (filePath: string) => Promise<{ success: boolean; filePath: string; content: string; error?: string }>;
       getAppVersion: () => Promise<string>;
+      onDirChanged?: (callback: (data: { dirPath: string }) => void) => () => void;
     };
   }
 }
@@ -56,6 +57,11 @@ export const App: React.FC = () => {
   const [currentDirPath, setCurrentDirPath] = useState<string>('');
   const [files, setFiles] = useState<Array<{ name: string; isDirectory: boolean; path: string }>>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
+
+  const currentDirPathRef = useRef<string>(currentDirPath);
+  useEffect(() => {
+    currentDirPathRef.current = currentDirPath;
+  }, [currentDirPath]);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -95,15 +101,18 @@ export const App: React.FC = () => {
 
   // Load Directory Tree
   const loadDirectory = useCallback(async (dirPath?: string) => {
-    console.log('[TypstCode Debug] loadDirectory requested for dirPath:', dirPath);
+    const targetDir = dirPath || currentDirPathRef.current || (filePathRef.current ? getRootDir(filePathRef.current) : undefined);
+    console.log('[TypstCode Debug] loadDirectory requested for targetDir:', targetDir);
     if (window.electronAPI?.readDir) {
       setIsLoadingFiles(true);
       try {
-        const res = await window.electronAPI.readDir(dirPath);
+        const res = await window.electronAPI.readDir(targetDir);
         console.log('[TypstCode Debug] electronAPI.readDir response:', res);
-        if (res.success) {
+        if (res && res.success) {
           setCurrentDirPath(res.dirPath);
-          setFiles(res.items);
+          setFiles([...res.items]);
+        } else {
+          console.warn('[TypstCode Debug] readDir unsuccessful:', res);
         }
       } catch (err) {
         console.error('[TypstCode Debug] Failed to load directory:', err);
@@ -122,6 +131,19 @@ export const App: React.FC = () => {
     } else {
       console.log('[TypstCode Debug] Running in Web environment (window.electronAPI undefined)');
       console.log('[TypstCode Debug] showOpenFilePicker supported?:', 'showOpenFilePicker' in window);
+    }
+  }, [loadDirectory]);
+
+  // Subscribe to automatic workspace directory change events (external file create/delete/rename)
+  useEffect(() => {
+    if (window.electronAPI?.onDirChanged) {
+      const unsubscribe = window.electronAPI.onDirChanged(({ dirPath }) => {
+        console.log('[TypstCode Debug] Workspace directory change event received for:', dirPath);
+        if (currentDirPathRef.current) {
+          loadDirectory(currentDirPathRef.current);
+        }
+      });
+      return () => unsubscribe();
     }
   }, [loadDirectory]);
 
@@ -292,6 +314,13 @@ export const App: React.FC = () => {
           setCode(res.content);
           setShowWelcome(false);
           handleCompile(res.content, res.filePath);
+
+          // Automatically load file's parent folder into the sidebar
+          const parentDir = getRootDir(res.filePath);
+          if (parentDir) {
+            console.log('[TypstCode Debug] Loading file parent folder into sidebar:', parentDir);
+            loadDirectory(parentDir);
+          }
         }
       } catch (err) {
         console.error('[TypstCode Debug] Failed to open file via Electron dialog:', err);
@@ -323,7 +352,7 @@ export const App: React.FC = () => {
       console.log('[TypstCode Debug] Clicking fallback fileInputRef');
       fileInputRef.current.click();
     }
-  }, [handleCompile, setCode, setFilePath]);
+  }, [handleCompile, loadDirectory, setCode, setFilePath]);
 
   const handleOpenFolder = useCallback(async () => {
     console.log('[TypstCode Debug] handleOpenFolder triggered');
@@ -420,6 +449,11 @@ export const App: React.FC = () => {
         console.log('[TypstCode Debug] electronAPI.saveFile response:', res);
         if (res && res.filePath) {
           setFilePath(res.filePath);
+          const targetDir = currentDirPathRef.current || getRootDir(res.filePath);
+          if (targetDir) {
+            console.log('[TypstCode Debug] Reloading workspace directory after file save:', targetDir);
+            loadDirectory(targetDir);
+          }
         }
       } catch (err) {
         console.error('[TypstCode Debug] Failed to save file via Electron:', err);
